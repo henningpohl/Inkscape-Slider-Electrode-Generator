@@ -1,30 +1,27 @@
-from cStringIO import StringIO
+#!/usr/bin/env python3
+from io import StringIO
 import inkex
-import simplestyle
+from lxml import etree
 
 class SliderElectrodes(inkex.Effect):
 	def __init__(self):
 		inkex.Effect.__init__(self)
-		self.OptionParser.add_option("-c", "--count", action="store", type="int", dest="count", default=5, help="Number of electrodes")
-		self.OptionParser.add_option("-s", "--spikes", action="store", type="int", dest="spikes", default=5, help="Number of spikes")
+		self.arg_parser.add_argument("-c", "--count", type=int, default=5, help="Number of electrodes")
+		self.arg_parser.add_argument("-s", "--spikes", type=int, default=5, help="Number of spikes")
 
 	def genPathString(self, bounds, spikeWidth, first=False, last=False):
 		s = StringIO()
-
 		cx = bounds[0]
 		cy = bounds[1]
 		stepx = spikeWidth
 		stepy = (bounds[3] - bounds[1]) / (2.0 * self.options.spikes)
-		
 		s.write(" M %f, %f " % (bounds[0], bounds[1]))
-		
 		if first:
 			s.write(" L %f, %f " % (bounds[0], bounds[3]))
 		else:
 			for i in range(self.options.spikes):
 				s.write(" L %f, %f " % (bounds[0] + stepx, bounds[1] + (2 * i + 1) * stepy))
 				s.write(" L %f, %f " % (bounds[0], bounds[1] + (2 * i + 2) * stepy))
-		
 		if last:
 			s.write(" L %f, %f " % (bounds[2], bounds[3]))
 			s.write(" L %f, %f " % (bounds[2], bounds[1]))
@@ -38,17 +35,10 @@ class SliderElectrodes(inkex.Effect):
 		
 	def effect(self):
 		svg = self.document.getroot()
-		width = float(self.document.getroot().get('width'))
-		height = float(self.document.getroot().get('height'))
+		width = self.svg.unittouu(self.document.getroot().get('width'))
+		height = self.svg.unittouu(self.document.getroot().get('height'))
 		
-		group = inkex.etree.SubElement(self.current_layer, 'g', {
-			inkex.addNS('label', 'inkscape') : 'Slider electrodes'
-		})
-		
-		style = {
-			'stroke'	: 'none',
-			'fill'		: '#000000'
-		}
+		group = etree.SubElement(self.svg.get_current_layer(), 'g', {inkex.addNS('label', 'inkscape') : 'Slider electrodes'})
 		
 		eWidth = width / self.options.count
 		spikeWidth = 0.6 * eWidth
@@ -60,12 +50,8 @@ class SliderElectrodes(inkex.Effect):
 				path = self.genPathString((eid * eWidth - 0.4 * spikeWidth, 0, (eid + 1) * eWidth, height), spikeWidth, last=True)
 			else:
 				path = self.genPathString((eid * eWidth - 0.4 * spikeWidth, 0, (eid + 1) * eWidth + 0.4 * spikeWidth, height), spikeWidth)
-		
-			e = inkex.etree.SubElement(group, inkex.addNS('path', 'svg'), {
-				'style' : simplestyle.formatStyle(style),
-				'd' : path
-			})
+			e = etree.SubElement(group, inkex.addNS('path', 'svg'), {'style':str(inkex.Style({'stroke':'none','fill'	:'#000000'})),'d' : path})
 			
 if __name__ == '__main__':
 	effect = SliderElectrodes()
-	effect.affect()
+	effect.run()
